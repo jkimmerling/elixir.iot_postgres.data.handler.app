@@ -1,9 +1,9 @@
-defmodule PostgresPopulater.MixProject do
+defmodule PostgresDataHandler.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :postgres_populater,
+      app: :postgres_data_handler,
       version: "0.1.0",
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
@@ -15,7 +15,7 @@ defmodule PostgresPopulater.MixProject do
   def application do
     [
       extra_applications: [:logger],
-      mod: {PostgresPopulater.Application, []}
+      mod: {PostgresDataHandler.Application, []}
     ]
   end
 

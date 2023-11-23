@@ -1,8 +1,8 @@
-defmodule PostgresPopulater do
+defmodule PostgresDataHandler do
 
   def insert_portfolio_row(integration, project_number) do
     Ecto.Adapters.SQL.query!(
-      PostgresPopulater.PortfolioRepo,
+      PostgresDataHandler.PortfolioRepo,
       "INSERT INTO portfolio_stats.project_list(project_name, integration_type)
       VALUES ('#{integration}_project_#{project_number}', '#{integration}')"
     )
@@ -16,13 +16,13 @@ defmodule PostgresPopulater do
 
   def create_portfolio_schemas() do
     Ecto.Adapters.SQL.query!(
-      PostgresPopulater.PortfolioRepo,
+      PostgresDataHandler.PortfolioRepo,
       "CREATE SCHEMA IF NOT EXISTS portfolio_stats
       AUTHORIZATION postgres"
     )
 
     Ecto.Adapters.SQL.query!(
-      PostgresPopulater.PortfolioRepo,
+      PostgresDataHandler.PortfolioRepo,
       "CREATE TABLE IF NOT EXISTS portfolio_stats.project_list (
         id SERIAL PRIMARY KEY,
         project_name text NOT NULL,
@@ -33,12 +33,12 @@ defmodule PostgresPopulater do
 
   def create_project_schema_and_table(integration, project_number) do
     Ecto.Adapters.SQL.query!(
-      PostgresPopulater.ProjectsRepo,
+      PostgresDataHandler.ProjectsRepo,
       "CREATE SCHEMA IF NOT EXISTS #{integration}_project_#{project_number}
       AUTHORIZATION postgres"
     )
     Ecto.Adapters.SQL.query!(
-      PostgresPopulater.ProjectsRepo,
+      PostgresDataHandler.ProjectsRepo,
       "CREATE TABLE IF NOT EXISTS  #{integration}_project_#{project_number}.points (
         id SERIAL PRIMARY KEY,
         point_name text NOT NULL,
@@ -47,7 +47,7 @@ defmodule PostgresPopulater do
       )"
     )
     Ecto.Adapters.SQL.query!(
-      PostgresPopulater.ProjectsRepo,
+      PostgresDataHandler.ProjectsRepo,
       "CREATE TABLE IF NOT EXISTS  #{integration}_project_#{project_number}.readings (
         id SERIAL PRIMARY KEY,
         point_id INT NOT NULL,
@@ -69,7 +69,7 @@ defmodule PostgresPopulater do
         }
       end)
 
-    PostgresPopulater.ProjectsRepo.insert_all(DatabaseTables.ProjectPoints, rows, prefix: "#{integration}_project_#{project_number}")
+    PostgresDataHandler.ProjectsRepo.insert_all(DatabaseTables.ProjectPoints, rows, prefix: "#{integration}_project_#{project_number}")
   end
 
   def insert_portfolio_project_rows(number_of_projects) do
@@ -83,12 +83,12 @@ defmodule PostgresPopulater do
         end)
       end)
       |> List.flatten()
-    PostgresPopulater.PortfolioRepo.insert_all(DatabaseTables.PortfolioProjectList, rows)
+    PostgresDataHandler.PortfolioRepo.insert_all(DatabaseTables.PortfolioProjectList, rows)
   end
 
   def truncate_rows(integration, project_number) do
     Ecto.Adapters.SQL.query!(
-      PostgresPopulater.ProjectsRepo,
+      PostgresDataHandler.ProjectsRepo,
       "TRUNCATE #{integration}_project_#{project_number}.readings"
     )
   end

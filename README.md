@@ -5,18 +5,18 @@
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `postgres_populater` to your list of dependencies in `mix.exs`:
+by adding `postgres_data_handler` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:postgres_populater, "~> 0.1.0"}
+    {:postgres_data_handler, "~> 0.1.0"}
   ]
 end
 ```
 
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/postgres_populater>.
+be found at <https://hexdocs.pm/postgres_data_handler>.
 
-# postgres_populater
+# postgres_data_handler
