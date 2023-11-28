@@ -1,62 +1,52 @@
 defmodule PostgresDataHandler do
+  ### Main Populater
+  def fill_database() do
+    %{
+      integration_list: integration_list,
+      number_of_projects: number_of_projects,
+      number_of_points: number_of_points
+    } = get_envs()
 
-  def insert_portfolio_row(integration, project_number) do
-    Ecto.Adapters.SQL.query!(
-      PostgresDataHandler.PortfolioRepo,
-      "INSERT INTO portfolio_stats.project_list(project_name, integration_type)
-      VALUES ('#{integration}_project_#{project_number}', '#{integration}')"
-    )
+    populate_portfolio_project_list(integration_list, number_of_projects)
+    populate_api_points(number_of_projects, number_of_points)
+    populate_redis_points(number_of_projects, number_of_points)
   end
 
-  def populate_portfolio(number_of_projects) do
-    Enum.each(["redis", "api"], fn integration ->
-      Enum.each(1..number_of_projects, fn project_number -> insert_portfolio_row(integration, project_number) end)
+  ### Portfolio Schema Section
+
+  def populate_portfolio_project_list(integration_list, number_of_projects) do
+    rows =
+      Enum.map(integration_list, fn integration_type ->
+        Enum.map(1..number_of_projects, fn project_number ->
+          %{
+            project_name: "#{integration_type}_project_#{project_number}",
+            integration_type: integration_type,
+            source: "127.0.0.1"
+          }
+        end)
+      end)
+      |> List.flatten()
+
+    PostgresDataHandler.PortfolioRepo.insert_all(DatabaseTables.PortfolioProjectList, rows)
+  end
+
+  ### Projects Schema Section
+
+  def populate_api_points(number_of_projects, number_of_points) do
+    Enum.each(1..number_of_projects, fn project_number ->
+      insert_project_point_rows("api", project_number, "801", number_of_points)
     end)
   end
 
-  def create_portfolio_schemas() do
-    Ecto.Adapters.SQL.query!(
-      PostgresDataHandler.PortfolioRepo,
-      "CREATE SCHEMA IF NOT EXISTS portfolio_stats
-      AUTHORIZATION postgres"
-    )
-
-    Ecto.Adapters.SQL.query!(
-      PostgresDataHandler.PortfolioRepo,
-      "CREATE TABLE IF NOT EXISTS portfolio_stats.project_list (
-        id SERIAL PRIMARY KEY,
-        project_name text NOT NULL,
-        integration_type text NOT NULL
-      )"
-    )
-  end
-
-  def create_project_schema_and_table(integration, project_number) do
-    Ecto.Adapters.SQL.query!(
-      PostgresDataHandler.ProjectsRepo,
-      "CREATE SCHEMA IF NOT EXISTS #{integration}_project_#{project_number}
-      AUTHORIZATION postgres"
-    )
-    Ecto.Adapters.SQL.query!(
-      PostgresDataHandler.ProjectsRepo,
-      "CREATE TABLE IF NOT EXISTS  #{integration}_project_#{project_number}.points (
-        id SERIAL PRIMARY KEY,
-        point_name text NOT NULL,
-        point_path text NOT NULL,
-        point_type text NOT NULL
-      )"
-    )
-    Ecto.Adapters.SQL.query!(
-      PostgresDataHandler.ProjectsRepo,
-      "CREATE TABLE IF NOT EXISTS  #{integration}_project_#{project_number}.readings (
-        id SERIAL PRIMARY KEY,
-        point_id INT NOT NULL,
-        point_name text NOT NULL,
-        point_path text NOT NULL,
-        point_value text NOT NULL,
-        creation_time text NOT NULL
-      )"
-    )
+  def populate_redis_points(number_of_projects, number_of_points) do
+    Enum.each(1..number_of_projects, fn project_number ->
+      insert_project_point_rows(
+        "redis",
+        project_number,
+        "FAKE_SYSTEM/FAKE_POINT_",
+        number_of_points
+      )
+    end)
   end
 
   def insert_project_point_rows(integration, project_number, path_base, number_of_points) do
@@ -69,21 +59,23 @@ defmodule PostgresDataHandler do
         }
       end)
 
-    PostgresDataHandler.ProjectsRepo.insert_all(DatabaseTables.ProjectPoints, rows, prefix: "#{integration}_project_#{project_number}")
+    PostgresDataHandler.ProjectsRepo.insert_all(DatabaseTables.ProjectPoints, rows,
+      prefix: "#{integration}_project_#{project_number}"
+    )
   end
 
-  def insert_portfolio_project_rows(number_of_projects) do
-    rows =
-      Enum.map(["redis", "api"], fn integration_type ->
-        Enum.map(1..number_of_projects, fn project_number ->
-          %{
-            project_name: "#{integration_type}_project_#{project_number}",
-            integration_type: integration_type
-          }
-        end)
+  ### Clean-up/Reset Section
+  def truncate_all_readings() do
+    %{
+      integration_list: integration_list,
+      number_of_projects: number_of_projects
+    } = get_envs()
+
+    Enum.each(integration_list, fn integration ->
+      Enum.each(1..number_of_projects, fn project_number ->
+        truncate_rows(integration, project_number)
       end)
-      |> List.flatten()
-    PostgresDataHandler.PortfolioRepo.insert_all(DatabaseTables.PortfolioProjectList, rows)
+    end)
   end
 
   def truncate_rows(integration, project_number) do
@@ -93,32 +85,17 @@ defmodule PostgresDataHandler do
     )
   end
 
-  def populate_api_points(number_of_projects, number_of_points) do
-    Enum.each(1..number_of_projects, fn project_number ->
-      create_project_schema_and_table("api", project_number)
-      insert_project_point_rows("api", project_number, "801", number_of_points)
-    end)
-  end
+  ### Helper Functions
 
-  def populate_redis_points(number_of_projects, number_of_points) do
-    Enum.each(1..number_of_projects, fn project_number ->
-      create_project_schema_and_table("redis", project_number)
-      insert_project_point_rows("redis", project_number, "FAKE_SYSTEM/FAKE_POINT_", number_of_points)
-    end)
-  end
+  def get_envs() do
+    integration_list = Jason.decode!(System.get_env("INTEGRATION_LIST"))
+    number_of_projects = String.to_integer(System.get_env("NUMBER_OF_PROJECTS"))
+    number_of_points = String.to_integer(System.get_env("NUMBER_OF_POINTS"))
 
-  def truncate_all_readings(number_of_projects) do
-    Enum.each(["redis", "api"], fn integration ->
-      Enum.each(1..number_of_projects, fn project_number ->
-        truncate_rows(integration, project_number)
-      end)
-    end)
-  end
-
-  def fill_database(number_of_projects, number_of_points) do
-    create_portfolio_schemas()
-    populate_portfolio(number_of_projects)
-    populate_api_points(number_of_projects, number_of_points)
-    populate_redis_points(number_of_projects, number_of_points)
+    %{
+      integration_list: integration_list,
+      number_of_projects: number_of_projects,
+      number_of_points: number_of_points
+    }
   end
 end

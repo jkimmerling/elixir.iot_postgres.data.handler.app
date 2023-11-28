@@ -24,6 +24,7 @@ defmodule PostgresDataHandler.MixProject do
     [
       {:ecto_sql, "~> 3.0"},
       {:postgrex, ">= 0.0.0"},
+      {:jason, "~> 1.4"}
     ]
   end
 end

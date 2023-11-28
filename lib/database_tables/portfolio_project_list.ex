@@ -6,5 +6,6 @@ defmodule DatabaseTables.PortfolioProjectList do
   schema "project_list" do
     field :project_name, :string
     field :integration_type, :string
+    field :source, :string
   end
 end
