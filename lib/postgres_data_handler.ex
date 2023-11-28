@@ -1,4 +1,5 @@
 defmodule PostgresDataHandler do
+
   ### Main Populater
   def fill_database() do
     %{
